@@ -4,17 +4,17 @@ languages:
 - csharp
 products:
 - azure
-services: Compute
-platforms: dotnet
-author: yaohaizh
+extensions:
+- services: Compute
+- platforms: dotnet
 ---
 
 # Getting started on listing compute SKUs using C# #
 
-      Azure Compute sample for managing Compute SKUs -
-       - List all compute SKUs in the subscription
-       - List compute SKUs for a specific compute resource type (VirtualMachines) in a region
-       - List compute SKUs for a specific compute resource type (Disks).
+ Azure Compute sample for managing Compute SKUs -
+  - List all compute SKUs in the subscription
+  - List compute SKUs for a specific compute resource type (VirtualMachines) in a region
+  - List compute SKUs for a specific compute resource type (Disks).
 
 
 ## Running this Sample ##
