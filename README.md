@@ -7,6 +7,7 @@ products:
 extensions:
 - services: Compute
 - platforms: dotnet
+description: "Azure Compute sample for managing Compute SKUs."
 ---
 
 # Getting started on listing compute SKUs using C# #
