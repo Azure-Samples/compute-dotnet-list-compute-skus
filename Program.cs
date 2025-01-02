@@ -1,14 +1,11 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.Management.Compute.Fluent;
-using Microsoft.Azure.Management.Fluent;
-using Microsoft.Azure.Management.ResourceManager.Fluent;
-using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
-using Microsoft.Azure.Management.Samples.Common;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using Azure.Core;
+using Azure.Identity;
+using Azure.ResourceManager;
+using Azure.ResourceManager.Samples.Common;
+using Azure.ResourceManager.Compute;
 
 namespace ListComputeSkus
 {
@@ -20,116 +17,115 @@ namespace ListComputeSkus
      */
     public class Program
     {
-        public static void RunSample(IAzure azure)
+        public static async Task RunSample(ArmClient client)
         {
             //=================================================================
+
             // List all compute SKUs in the subscription
-            //
+            var subscription = await client.GetDefaultSubscriptionAsync();
+            var skus = subscription.GetComputeResourceSkus();
             Utilities.Log("Listing Compute SKU in the subscription");
-            String format = "{0,-22} {1,-22} {2,-22} {3}";
-
+            var format = "{0,-22} {1,-22} {2,-22} {3}";
             Utilities.Log(String.Format(format, "Name", "ResourceType", "Size", "Regions [zones]"));
-            Utilities.Log("============================================================================");
-
-            HashSet<string> hashSet = new HashSet<string>();
-
-            var skus = azure.ComputeSkus.List();
-            foreach (IComputeSku sku in skus)
+            Utilities.Log("========================================================================================");
+            var hashSet = new HashSet<string>();
+            foreach (var sku in skus)
             {
                 String size = null;
-                if (sku.ResourceType.Equals(ComputeResourceType.VirtualMachines))
+                String regionZones = null;
+                if (sku.ResourceType.Equals("virtualMachines"))
                 {
-                    size = sku.VirtualMachineSizeType?.ToString();
+                    size = sku.Size;
                 }
-                else if (sku.ResourceType.Equals(ComputeResourceType.AvailabilitySets))
+                else if (sku.ResourceType.Equals("availabilitySets"))
                 {
-                    size = sku.AvailabilitySetSkuType?.ToString();
+                    size = sku.Size;
                 }
-                else if (sku.ResourceType.Equals(ComputeResourceType.Disks))
+                else if (sku.ResourceType.Equals("disks"))
                 {
-                    size = sku.DiskSkuType?.ToString();
+                    size = sku.Size;
                 }
-                else if (sku.ResourceType.Equals(ComputeResourceType.Snapshots))
+                else if (sku.ResourceType.Equals("snapshots"))
                 {
-                    size = sku.DiskSkuType?.ToString();
+                    size = sku.Size;
                 }
-                var regionZones = sku.Zones;
-                Utilities.Log(String.Format(format, sku.Name, sku.ResourceType, size, RegionZoneToString(regionZones)));
+                if (sku != null && sku.LocationInfo != null && sku.LocationInfo.Count > 0)
+                {
+                    regionZones = sku.Locations[0].ToString() + ":"+ string.Join(",", sku.LocationInfo[0].Zones);
+                }
+                else
+                {
+                    regionZones = null;
+                }
+                Utilities.Log(String.Format(format, sku.Name, sku.ResourceType, size, regionZones));
             }
 
             //=================================================================
+
             // List compute SKUs for a specific compute resource type (VirtualMachines) in a region
-            //
             Utilities.Log("Listing compute SKUs for a specific compute resource type (VirtualMachines) in a region (US East2)");
             format = "{0,-22} {1,-22} {2}";
-
             Utilities.Log(String.Format(format, "Name", "Size", "Regions [zones]"));
             Utilities.Log("============================================================================");
-
-            skus = azure.ComputeSkus
-                    .ListbyRegionAndResourceType(Region.USEast2, ComputeResourceType.VirtualMachines);
-            foreach (IComputeSku sku in skus)
+            var skuss = subscription.GetComputeResourceSkus();
+            foreach(var sku in skuss) 
             {
-                var line = String.Format(format, sku.Name, sku.VirtualMachineSizeType, RegionZoneToString(sku.Zones));
-                Utilities.Log(line);
+                String regionZones = null;
+                if (sku.ResourceType.Equals("virtualMachines") && sku.Locations[0].ToString().Equals("eastus2"))
+                {
+                    if (sku != null && sku.LocationInfo != null && sku.LocationInfo.Count > 0)
+                    {
+                        regionZones = sku.Locations[0].ToString() + ":" + string.Join(",", sku.LocationInfo[0].Zones);
+                    }
+                    else
+                    {
+                        regionZones = null;
+                    }
+                    var line = String.Format(format, sku.Name, sku.Size, regionZones);
+                    Utilities.Log(line);
+                }
             }
 
             //=================================================================
+
             // List compute SKUs for a specific compute resource type (Disks)
-            //
             Utilities.Log("Listing compute SKUs for a specific compute resource type (Disks)");
             format = "{0,-22} {1,-22} {2}";
-
-            Utilities.Log(String.Format(format, "Name", "Size", "Regions [zones]"));
+            Utilities.Log(String.Format(format, "Name", "Type", "Regions [zones]"));
             Utilities.Log("============================================================================");
-
-            skus = azure.ComputeSkus
-                    .ListByResourceType(ComputeResourceType.Disks);
-            foreach (IComputeSku sku in skus)
+            foreach(var sku in skus)
             {
-                var line = String.Format(format, sku.Name, sku.DiskSkuType, RegionZoneToString(sku.Zones));
-                Utilities.Log(line);
-            }
-        }
-
-        private static String RegionZoneToString(IReadOnlyDictionary<Region, ISet<AvailabilityZoneId>> regionZonesMap)
-        {
-            StringBuilder builder = new StringBuilder();
-            foreach (var regionZones in regionZonesMap)
-            {
-                builder.Append(regionZones.Key.ToString());
-                builder.Append(" [ ");
-                foreach (AvailabilityZoneId zone in regionZones.Value)
+                String regionZones = null;
+                if (sku.ResourceType.Equals("disks"))
                 {
-                    builder.Append(zone).Append(" ");
+                    if (sku != null && sku.LocationInfo != null && sku.LocationInfo.Count > 0)
+                    {
+                        regionZones = sku.Locations[0].ToString() + ":" + string.Join(",", sku.LocationInfo[0].Zones);
+                    }
+                    else
+                    {
+                        regionZones = null;
+                    }
+                    var line = String.Format(format, sku.Name, sku.ResourceType, regionZones);
+                    Utilities.Log(line);
                 }
-                builder.Append("] ");
             }
-            return builder.ToString();
         }
-
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             try
             {
-                //=================================================================
-                // Authenticate
-                var credentials = SdkContext.AzureCredentialsFactory.FromFile(Environment.GetEnvironmentVariable("AZURE_AUTH_LOCATION"));
-
-                var azure = Azure
-                    .Configure()
-                    .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
-                    .Authenticate(credentials)
-                    .WithDefaultSubscription();
-
-                // Print selected subscription
-                Utilities.Log("Selected subscription: " + azure.SubscriptionId);
-
-                RunSample(azure);
+                var clientId = Environment.GetEnvironmentVariable("CLIENT_ID");
+                var clientSecret = Environment.GetEnvironmentVariable("CLIENT_SECRET");
+                var tenantId = Environment.GetEnvironmentVariable("TENANT_ID");
+                var subscription = Environment.GetEnvironmentVariable("SUBSCRIPTION_ID");
+                ClientSecretCredential credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
+                ArmClient client = new ArmClient(credential, subscription);
+                await RunSample(client);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                Utilities.Log(ex);
+                Utilities.Log(e);
             }
         }
     }
